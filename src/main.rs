@@ -1,4 +1,4 @@
-
+// Server that displays IO Status
 
 use axum::{
     extract::State,
@@ -16,8 +16,6 @@ use std::any::type_name;
 use std::error::Error;
 use std::thread;
 use rppal::pwm::{Channel, Polarity, Pwm};
-
-
 
 
 
@@ -92,7 +90,8 @@ async fn main() {
         // set the user selected outputs 
         let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
 
-    
+    20
+
         
 
         loop {
