@@ -11,16 +11,7 @@ use axum::{
     response::{Html, IntoResponse},
     
 };
-use axum_extra::TypedHeader;
-
-use std::net::SocketAddr;
-
-//allows to extract the IP of connecting user
-use axum::extract::connect_info::ConnectInfo;
-
-//allows to split the websocket stream into separate TX and RX branches
-use futures::stream::StreamExt;
-
+use std::time::Duration;
 use std::sync::{Arc,Mutex};
 use crate::IoState;
 
@@ -62,4 +53,15 @@ async fn handle_socket(mut socket: WebSocket) {
   
     // returning from the handler closes the websocket connection
     println!("Websocket context marques destroyed");
+
+    let mut counter = 0;
+
+    loop { 
+        println!("counter: {counter}");
+        socket.send(Message::Text(counter.to_string())).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        
+        counter += 1;
+    }
+
 }

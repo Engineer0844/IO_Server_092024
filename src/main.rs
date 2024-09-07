@@ -1,6 +1,4 @@
 // Server that displays IO Status
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 use axum::{
     extract::State,
     response::Html,
@@ -12,7 +10,6 @@ use std::time::Duration;
 use rppal::gpio::Gpio;
 use std::io;
 use std::error::Error;
-use std::thread;
 use rppal::i2c::I2c;
 
 mod rhino;
@@ -92,15 +89,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     i2c.set_slave_address(ADDR_ADS115)?; // Set the I2C slave address to the device we're communicating with.
 
     i2c.block_write(REG_CONFIGURATION, &[0x42, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME));
 
     i2c.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME));
 
     let mut reg = [0u8; 2];
 
     i2c.block_read(0x00, &mut reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME));
 
 
     let adc0val:u16 = u16::from_be_bytes(reg);
@@ -117,31 +114,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let pin_24 = Gpio::new().unwrap().get(24).unwrap().into_input_pulldown();
         // set the user selected outputs 
         let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
-
-    
-        
-
         loop {
-            {
-                let mut io_state = background_state.lock().unwrap();
-                io_state.set_pin(0, pin_24.is_high());
-                io_state.set_pin(1, pin_25.is_high());
-
+            {   
+                {
+                    let mut io_state = background_state.lock().unwrap();
+                    io_state.set_pin(0, pin_24.is_high());
+                    io_state.set_pin(1, pin_25.is_high());
+                }
                 pin_selection_one.toggle();
-                thread::sleep(Duration::from_millis(250));
+                tokio::time::sleep(Duration::from_millis(250)).await;
 
-                get_adc0_value();
-                get_adc1_value();
-                get_adc2_value();
-                get_adc3_value();
+                get_adc0_value().await;
+                get_adc1_value().await;
+                get_adc2_value().await;
+                get_adc3_value().await;
                 println!("");
-                get_adc0_2_value();
-                get_adc1_2_value();
-                get_adc2_2_value();
-                get_adc3_2_value();
+                get_adc0_2_value().await;
+                get_adc1_2_value().await;
+                get_adc2_2_value().await;
+                get_adc3_2_value().await;
                 println!("");
-
-            
             }
             tokio::time::sleep(Duration::from_millis(50)).await;
             // sleep for half a second
@@ -167,7 +159,7 @@ fn get_pin_number(x: String) -> u8 {
 }
 
 
-fn get_adc0_value() -> Result<(), Box<dyn Error>>
+async fn get_adc0_value() -> Result<(), Box<dyn Error>>
 {
 
     let mut adc0_reg = [0u8; 2];
@@ -176,13 +168,13 @@ fn get_adc0_value() -> Result<(), Box<dyn Error>>
     i2c0.set_slave_address(ADDR_ADS115)?;
 
     i2c0.block_write(REG_CONFIGURATION, &[0x42, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_read(REG_CONVERSION, &mut adc0_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc0val:u16 = u16::from_be_bytes(adc0_reg);
@@ -200,7 +192,7 @@ fn get_adc0_value() -> Result<(), Box<dyn Error>>
 }
     
 
-fn get_adc1_value() -> Result<(), Box<dyn Error>>
+async fn get_adc1_value() -> Result<(), Box<dyn Error>>
 {
 
     let mut adc1_reg = [0u8; 2];
@@ -209,13 +201,13 @@ fn get_adc1_value() -> Result<(), Box<dyn Error>>
     i2c1.set_slave_address(ADDR_ADS115)?;
 
     i2c1.block_write(REG_CONFIGURATION, &[0x52, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c1.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c1.block_read(REG_CONVERSION, &mut adc1_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc1val:u16 = u16::from_be_bytes(adc1_reg);
@@ -235,7 +227,7 @@ fn get_adc1_value() -> Result<(), Box<dyn Error>>
 
 
 
-fn get_adc2_value() -> Result<(), Box<dyn Error>>
+async fn get_adc2_value() -> Result<(), Box<dyn Error>>
 {
 
     let mut adc2_reg = [0u8; 2];
@@ -244,13 +236,13 @@ fn get_adc2_value() -> Result<(), Box<dyn Error>>
     i2c2.set_slave_address(ADDR_ADS115)?;
 
     i2c2.block_write(REG_CONFIGURATION, &[0x62, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c2.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c2.block_read(REG_CONVERSION, &mut adc2_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc2val:u16 = u16::from_be_bytes(adc2_reg);
@@ -268,7 +260,7 @@ fn get_adc2_value() -> Result<(), Box<dyn Error>>
 }
 
 
-fn get_adc3_value() -> Result<(), Box<dyn Error>>
+async fn get_adc3_value() -> Result<(), Box<dyn Error>>
 {
 
     let mut adc3_reg = [0u8; 2];
@@ -277,13 +269,13 @@ fn get_adc3_value() -> Result<(), Box<dyn Error>>
     i2c3.set_slave_address(ADDR_ADS115)?;
 
     i2c3.block_write(REG_CONFIGURATION, &[0x72, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c3.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c3.block_read(REG_CONVERSION, &mut adc3_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc3val:u16 = u16::from_be_bytes(adc3_reg);
@@ -301,7 +293,7 @@ fn get_adc3_value() -> Result<(), Box<dyn Error>>
 }
 
 
-fn get_adc0_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
+async fn get_adc0_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
 {
 
     let mut adc0_2_reg = [0u8; 2];
@@ -310,13 +302,13 @@ fn get_adc0_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     i2c0.set_slave_address(ADDR_ADS115_TWO)?;
 
     i2c0.block_write(REG_CONFIGURATION, &[0x42, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_read(REG_CONVERSION, &mut adc0_2_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc0_2_val:u16 = u16::from_be_bytes(adc0_2_reg);
@@ -331,7 +323,7 @@ fn get_adc0_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
 }
 
 
-fn get_adc1_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
+async fn get_adc1_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
 {
 
     let mut adc1_2_reg = [0u8; 2];
@@ -340,13 +332,13 @@ fn get_adc1_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     i2c0.set_slave_address(ADDR_ADS115_TWO)?;
 
     i2c0.block_write(REG_CONFIGURATION, &[0x52, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_read(REG_CONVERSION, &mut adc1_2_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc1_2_val:u16 = u16::from_be_bytes(adc1_2_reg);
@@ -361,7 +353,7 @@ fn get_adc1_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
 }
 
 
-fn get_adc2_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
+async fn get_adc2_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
 {
 
     let mut adc2_2_reg = [0u8; 2];
@@ -370,13 +362,13 @@ fn get_adc2_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     i2c0.set_slave_address(ADDR_ADS115_TWO)?;
 
     i2c0.block_write(REG_CONFIGURATION, &[0x62, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_read(REG_CONVERSION, &mut adc2_2_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc2_2_val:u16 = u16::from_be_bytes(adc2_2_reg);
@@ -391,7 +383,7 @@ fn get_adc2_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
 }
 
 
-fn get_adc3_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
+async fn get_adc3_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115 ADC slave chip
 {
 
     let mut adc3_2_reg = [0u8; 2];
@@ -400,13 +392,13 @@ fn get_adc3_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     i2c0.set_slave_address(ADDR_ADS115_TWO)?;
 
     i2c0.block_write(REG_CONFIGURATION, &[0x72, 0x82],)?; // Set configuration setting to ADS115
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
     i2c0.block_read(REG_CONVERSION, &mut adc3_2_reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    thread::sleep(Duration::from_millis(DELAY_TIME));
+    tokio::time::sleep(Duration::from_millis(DELAY_TIME)).await;
 
 
     let adc3_2_val:u16 = u16::from_be_bytes(adc3_2_reg);

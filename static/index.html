@@ -12,7 +12,7 @@
 
     web_sock.onmessage = function(event) {
         const data = event.data;
-        console.log("Got message");
+        console.log("Got message: ", data);
     }
 
     web_sock.onclose = function(event) {
