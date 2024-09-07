@@ -3,7 +3,22 @@
 
     <body>
 
+        <div>
+            <p> Marques's cool website</p>
+            <p id="counter">iunno</p>
+            <p id="adc-1"></p>
+            <p id="adc-2"></p>
+            <p id="adc-3"></p>
+            <p id="adc-4"></p>
+        </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.js" integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
     <script>
+
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/message_event
+    // read this to learn about websocket api
     var web_sock = new WebSocket('ws://' + window.location.host + '/ws');
 
     web_sock.onopen = () => {
@@ -12,7 +27,11 @@
 
     web_sock.onmessage = function(event) {
         const data = event.data;
-        console.log("Got message: ", data);
+        // console.log("Got message: ", data);
+
+        var incoming_data = JSON.parse(event.data);
+        const id_selector = $("#" +incoming_data["id"]);
+        id_selector.html(incoming_data["text"]);
     }
 
     web_sock.onclose = function(event) {

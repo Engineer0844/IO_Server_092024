@@ -7,13 +7,15 @@
 use axum::{
     Router,
     routing::get,
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    extract::ws::{WebSocket, WebSocketUpgrade},
     response::{Html, IntoResponse},
     
 };
 use std::time::Duration;
 use std::sync::{Arc,Mutex};
 use crate::IoState;
+
+use crate::rhino::Rhino;
 
 /// Main application that launches the server
 ///
@@ -49,16 +51,25 @@ async fn ws_handler(
 }
 
 /// Actual websocket statemachine (one will be spawned per connection)
-async fn handle_socket(mut socket: WebSocket) {
+async fn handle_socket(socket: WebSocket) {
   
     // returning from the handler closes the websocket connection
     println!("Websocket context marques destroyed");
+
+    let mut rhino = Rhino::new(socket);
 
     let mut counter = 0;
 
     loop { 
         println!("counter: {counter}");
-        socket.send(Message::Text(counter.to_string())).await;
+
+        rhino.send_text_update("counter", counter.to_string()).await;
+        rhino.send_text_update("adc-1", counter.to_string()).await;
+        rhino.send_text_update("adc-2", (counter * 2).to_string()).await;
+        rhino.send_text_update("adc-3", (counter* 3).to_string()).await;
+
+
+        // socket.send(Message::Text(counter.to_string())).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
         
         counter += 1;

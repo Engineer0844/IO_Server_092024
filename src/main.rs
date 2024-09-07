@@ -145,6 +145,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         
     });
 
+
     app(shared_state).await;
 
     Ok(())
