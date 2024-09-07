@@ -1,18 +1,5 @@
 // Server that displays IO Status
-
-
-use axum::{
-    routing::get,
-    Router,
-};
-use axum_extra::TypedHeader;
-
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-
-//allows to split the websocket stream into separate TX and RX branches
-use futures::{sink::SinkExt, stream::StreamExt};
-
 
 use axum::{
     extract::State,
@@ -30,8 +17,7 @@ use rppal::i2c::I2c;
 
 mod rhino;
 mod web;
-
-use web::ws_handler;
+use web::app;
 
 // ADS1115 I2C address when ADDR pin pulled to ground
 const ADDR_ADS115:     u16 = 0x48; // Address of first ADS115 chip  
@@ -43,12 +29,6 @@ const REG_CONVERSION:    u8 = 0x00;
 const DELAY_TIME:        u64 = 200; 
 const VOLTAGE_LIMIT:     f32 = 6.5; 
 
-
-
-async fn hello_world() -> String {
-    let a = 40;
-    format!("Hello, World! i am {}", a)
-}
 
 // const IO_PAGE: &str = ;
 
@@ -173,16 +153,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         
     });
 
-    // build our application with a single route
-    let app = Router::new()
-                    .route("/ws", get(ws_handler))
-                    .route("/", get(hello_world))
-                    .route("/io", get(get_io_status))
-                    .with_state(shared_state);
-
-    // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    app(shared_state).await;
 
     Ok(())
 }

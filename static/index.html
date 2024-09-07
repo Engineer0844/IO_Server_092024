@@ -1,0 +1,23 @@
+
+<html>
+
+    <body>
+
+    <script>
+    var web_sock = new WebSocket('ws://' + window.location.host + '/ws');
+
+    web_sock.onopen = () => {
+        console.log("Image data websocket opened");
+    }
+
+    web_sock.onmessage = function(event) {
+        const data = event.data;
+        console.log("Got message");
+    }
+
+    web_sock.onclose = function(event) {
+        console.log("image data websocket closed");
+    }
+    </script>
+    </body> 
+</html>
