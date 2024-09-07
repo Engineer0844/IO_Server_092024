@@ -1,9 +1,21 @@
 // Server that displays IO Status
 
+
 use axum::{
-    extract::State,
     routing::get,
     Router,
+};
+use axum_extra::TypedHeader;
+
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+
+//allows to split the websocket stream into separate TX and RX branches
+use futures::{sink::SinkExt, stream::StreamExt};
+
+
+use axum::{
+    extract::State,
     response::Html,
 };
 
@@ -12,11 +24,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use rppal::gpio::Gpio;
 use std::io;
-use std::any::type_name;
 use std::error::Error;
 use std::thread;
-use rppal::pwm::{Channel, Polarity, Pwm};
 use rppal::i2c::I2c;
+
+mod rhino;
+mod web;
+
+use web::ws_handler;
 
 // ADS1115 I2C address when ADDR pin pulled to ground
 const ADDR_ADS115:     u16 = 0x48; // Address of first ADS115 chip  
@@ -90,7 +105,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("Pick the first Raspberry PI output pin number"); //PIN 20 is connected for pin pick
     io::stdin().read_line(&mut pin_pic_one).expect("Failed to read line");
 
-    let mut pick_one = get_pin_number(pin_pic_one);
+    let pick_one = get_pin_number(pin_pic_one);
     println!("pick_one equals: {pick_one}");
 
     let mut i2c = I2c::new()?;
@@ -108,18 +123,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc0val:u16 = u16::from_be_bytes(reg);
+    let adc0val:u16 = u16::from_be_bytes(reg);
     println!(" ADC 0 decimal value = {:?} ", adc0val);
-    let mut adc0voltage:f32 = adc0val.into(); 
+    let adc0voltage:f32 = adc0val.into(); 
 
-    let mut adc0voltage:f32 = adc0voltage * 0.000125;
+    let adc0voltage:f32 = adc0voltage * 0.000125;
     println!(" ADC 0 voltage = {:?} ", adc0voltage);
 
 
     tokio::spawn(async move {
         // set input pins
-        let mut pin_25 = Gpio::new().unwrap().get(25).unwrap().into_input_pulldown();
-        let mut pin_24 = Gpio::new().unwrap().get(24).unwrap().into_input_pulldown();
+        let pin_25 = Gpio::new().unwrap().get(25).unwrap().into_input_pulldown();
+        let pin_24 = Gpio::new().unwrap().get(24).unwrap().into_input_pulldown();
         // set the user selected outputs 
         let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
 
@@ -160,6 +175,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // build our application with a single route
     let app = Router::new()
+                    .route("/ws", get(ws_handler))
                     .route("/", get(hello_world))
                     .route("/io", get(get_io_status))
                     .with_state(shared_state);
@@ -171,10 +187,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn get_pin_number(x: String) -> u8 {
 
-    let mut num = x.trim();
-    let mut num = num.parse::<u8>().unwrap();
+fn get_pin_number(x: String) -> u8 {    
+    let num = x.trim().parse::<u8>().unwrap();
     println!("num equals: {num}");
     
     num   
@@ -199,9 +214,9 @@ fn get_adc0_value() -> Result<(), Box<dyn Error>>
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc0val:u16 = u16::from_be_bytes(adc0_reg);
+    let adc0val:u16 = u16::from_be_bytes(adc0_reg);
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
-    let mut adc0voltage:f32 = adc0val.into(); 
+    let adc0voltage:f32 = adc0val.into(); 
 
     let mut adc0voltage:f32 = adc0voltage * 0.000125;
     if adc0voltage > VOLTAGE_LIMIT {
@@ -232,9 +247,9 @@ fn get_adc1_value() -> Result<(), Box<dyn Error>>
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc1val:u16 = u16::from_be_bytes(adc1_reg);
+    let adc1val:u16 = u16::from_be_bytes(adc1_reg);
     //println!(" ADC 1 decimal value = {:?} ", adc1val);
-    let mut adc1voltage:f32 = adc1val.into(); 
+    let adc1voltage:f32 = adc1val.into(); 
 
     let mut adc1voltage:f32 = adc1voltage * 0.000125;
     if adc1voltage > VOLTAGE_LIMIT {
@@ -267,9 +282,9 @@ fn get_adc2_value() -> Result<(), Box<dyn Error>>
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc2val:u16 = u16::from_be_bytes(adc2_reg);
+    let adc2val:u16 = u16::from_be_bytes(adc2_reg);
     //println!(" ADC 2 decimal value = {:?} ", adc2val);
-    let mut adc2voltage:f32 = adc2val.into(); 
+    let adc2voltage:f32 = adc2val.into(); 
 
     let mut adc2voltage:f32 = adc2voltage * 0.000125;
     if adc2voltage > VOLTAGE_LIMIT {
@@ -300,9 +315,9 @@ fn get_adc3_value() -> Result<(), Box<dyn Error>>
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc3val:u16 = u16::from_be_bytes(adc3_reg);
+    let adc3val:u16 = u16::from_be_bytes(adc3_reg);
     //println!(" ADC 3 decimal value = {:?} ", adc3val);
-    let mut adc3voltage:f32 = adc3val.into(); 
+    let adc3voltage:f32 = adc3val.into(); 
 
     let mut adc3voltage:f32 = adc3voltage * 0.000125;
     if adc3voltage > VOLTAGE_LIMIT {
@@ -333,11 +348,11 @@ fn get_adc0_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc0_2_val:u16 = u16::from_be_bytes(adc0_2_reg);
+    let adc0_2_val:u16 = u16::from_be_bytes(adc0_2_reg);
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
-    let mut adc0_2_voltage:f32 = adc0_2_val.into(); 
+    let adc0_2_voltage:f32 = adc0_2_val.into(); 
 
-    let mut adc0_2_voltage:f32 = adc0_2_voltage * 0.000125;
+    let adc0_2_voltage:f32 = adc0_2_voltage * 0.000125;
     println!(" ADC_2 0 voltage = {:?} ", adc0_2_voltage);
     
     Ok(())
@@ -363,11 +378,11 @@ fn get_adc1_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc1_2_val:u16 = u16::from_be_bytes(adc1_2_reg);
+    let adc1_2_val:u16 = u16::from_be_bytes(adc1_2_reg);
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
-    let mut adc1_2_voltage:f32 = adc1_2_val.into(); 
+    let adc1_2_voltage:f32 = adc1_2_val.into(); 
 
-    let mut adc1_2_voltage:f32 = adc1_2_voltage * 0.000125;
+    let adc1_2_voltage:f32 = adc1_2_voltage * 0.000125;
     println!(" ADC_2 1 voltage = {:?} ", adc1_2_voltage);
     
     Ok(())
@@ -393,11 +408,11 @@ fn get_adc2_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc2_2_val:u16 = u16::from_be_bytes(adc2_2_reg);
+    let adc2_2_val:u16 = u16::from_be_bytes(adc2_2_reg);
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
-    let mut adc2_2_voltage:f32 = adc2_2_val.into(); 
+    let adc2_2_voltage:f32 = adc2_2_val.into(); 
 
-    let mut adc2_2_voltage:f32 = adc2_2_voltage * 0.000125;
+    let adc2_2_voltage:f32 = adc2_2_voltage * 0.000125;
     println!(" ADC_2 2 voltage = {:?} ", adc2_2_voltage);
     
     Ok(())
@@ -423,11 +438,11 @@ fn get_adc3_2_value() -> Result<(), Box<dyn Error>>  // this is a second ADS1115
     thread::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    let mut adc3_2_val:u16 = u16::from_be_bytes(adc3_2_reg);
+    let adc3_2_val:u16 = u16::from_be_bytes(adc3_2_reg);
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
-    let mut adc3_2_voltage:f32 = adc3_2_val.into(); 
+    let adc3_2_voltage:f32 = adc3_2_val.into(); 
 
-    let mut adc3_2_voltage:f32 = adc3_2_voltage * 0.000125;
+    let adc3_2_voltage:f32 = adc3_2_voltage * 0.000125;
     println!(" ADC_2 3 voltage = {:?} ", adc3_2_voltage);
     
     Ok(())
