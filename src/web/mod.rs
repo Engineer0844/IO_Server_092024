@@ -1,3 +1,5 @@
+
+/// https://momori.dev/posts/building-a-websocket-chat-app-with-axum-and-react/
 /// Website related functionality goes here. 
 
 // pulled from https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/main.rs
@@ -48,32 +50,16 @@ async fn index<'a>() -> Html<&'a str> {
 /// as well as things from HTTP headers such as user-agent of the browser etc.
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    user_agent: Option<TypedHeader<headers::UserAgent>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
-    let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
-        user_agent.to_string()
-    } else {
-        String::from("Unknown browser")
-    };
-    println!("`{user_agent}` at {addr} connected.");
+    println!("Ws handler got called");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
-    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+    ws.on_upgrade(move |socket| handle_socket(socket))
 }
 
 /// Actual websocket statemachine (one will be spawned per connection)
-async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
-    // send a ping (unsupported by some browsers) just to kick things off and get a response
-    if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
-        println!("Pinged {who}...");
-    } else {
-        println!("Could not send ping {who}!");
-        // no Error here since the only thing we can do is to close the connection.
-        // If we can not send messages, there is no way to salvage the statemachine anyway.
-        return;
-    }
-
+async fn handle_socket(mut socket: WebSocket) {
+  
     // returning from the handler closes the websocket connection
-    println!("Websocket context {who} destroyed");
+    println!("Websocket context marques destroyed");
 }
