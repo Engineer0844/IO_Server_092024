@@ -9,19 +9,25 @@ use axum::{
     routing::get,
     extract::ws::{WebSocket, WebSocketUpgrade},
     response::{Html, IntoResponse},
-    
 };
+use tower_http::{
+    services::ServeDir,
+};
+
 use std::time::Duration;
 use std::sync::{Arc,Mutex};
 use crate::IoState;
 
 use crate::rhino::Rhino;
 
+
+
 /// Main application that launches the server
 ///
 pub async fn app(shared_state: Arc<Mutex<IoState>>) {
     let app = Router::new()
-        .route("/index", get(index))
+        .fallback_service(ServeDir::new("static"))
+        // .route("/index", get(index))
         .route("/ws", get(ws_handler))
         .route("/io", get(crate::get_io_status))
         .with_state(shared_state);

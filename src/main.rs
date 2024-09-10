@@ -77,74 +77,74 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let shared_state: Arc<Mutex<IoState>> = Arc::new(Mutex::new(IoState::new()));
     let background_state = shared_state.clone();
+    #[cfg(target_arch="arm")]
+    {
+        let mut pin_pic_one = String::new();
+        println!("Pick the first Raspberry PI output pin number"); //PIN 20 is connected for pin pick
+        io::stdin().read_line(&mut pin_pic_one).expect("Failed to read line");
+        let pick_one = get_pin_number(pin_pic_one);
+        println!("pick_one equals: {pick_one}");
 
-    let mut pin_pic_one = String::new();
-    println!("Pick the first Raspberry PI output pin number"); //PIN 20 is connected for pin pick
-    io::stdin().read_line(&mut pin_pic_one).expect("Failed to read line");
+        let mut i2c = I2c::new()?;
+        i2c.set_slave_address(ADDR_ADS115)?; // Set the I2C slave address to the device we're communicating with.
 
-    let pick_one = get_pin_number(pin_pic_one);
-    println!("pick_one equals: {pick_one}");
+        i2c.block_write(REG_CONFIGURATION, &[0x42, 0x82],)?; // Set configuration setting to ADS115
+        tokio::time::sleep(Duration::from_millis(DELAY_TIME));
 
-    let mut i2c = I2c::new()?;
-    i2c.set_slave_address(ADDR_ADS115)?; // Set the I2C slave address to the device we're communicating with.
+        i2c.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
+        tokio::time::sleep(Duration::from_millis(DELAY_TIME));
 
-    i2c.block_write(REG_CONFIGURATION, &[0x42, 0x82],)?; // Set configuration setting to ADS115
-    tokio::time::sleep(Duration::from_millis(DELAY_TIME));
+        let mut reg = [0u8; 2];
 
-    i2c.block_write(REG_CONVERSION, &[0x00],)?;       // Set ADS115 config to look at the conversion registers 
-    tokio::time::sleep(Duration::from_millis(DELAY_TIME));
-
-    let mut reg = [0u8; 2];
-
-    i2c.block_read(0x00, &mut reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
-    tokio::time::sleep(Duration::from_millis(DELAY_TIME));
-
-
-    let adc0val:u16 = u16::from_be_bytes(reg);
-    println!(" ADC 0 decimal value = {:?} ", adc0val);
-    let adc0voltage:f32 = adc0val.into(); 
-
-    let adc0voltage:f32 = adc0voltage * 0.000125;
-    println!(" ADC 0 voltage = {:?} ", adc0voltage);
+        i2c.block_read(0x00, &mut reg)?;       // reads ADS115 conversion register and puts contents into reg buffer
+        tokio::time::sleep(Duration::from_millis(DELAY_TIME));
 
 
-    tokio::spawn(async move {
-        // set input pins
-        let pin_25 = Gpio::new().unwrap().get(25).unwrap().into_input_pulldown();
-        let pin_24 = Gpio::new().unwrap().get(24).unwrap().into_input_pulldown();
-        // set the user selected outputs 
-        let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
-        loop {
-            {   
-                {
-                    let mut io_state = background_state.lock().unwrap();
-                    io_state.set_pin(0, pin_24.is_high());
-                    io_state.set_pin(1, pin_25.is_high());
+        let adc0val:u16 = u16::from_be_bytes(reg);
+        println!(" ADC 0 decimal value = {:?} ", adc0val);
+        let adc0voltage:f32 = adc0val.into(); 
+
+        let adc0voltage:f32 = adc0voltage * 0.000125;
+        println!(" ADC 0 voltage = {:?} ", adc0voltage);
+
+
+        tokio::spawn(async move {
+            // set input pins
+            let pin_25 = Gpio::new().unwrap().get(25).unwrap().into_input_pulldown();
+            let pin_24 = Gpio::new().unwrap().get(24).unwrap().into_input_pulldown();
+            // set the user selected outputs 
+            let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
+            loop {
+                {   
+                    {
+                        let mut io_state = background_state.lock().unwrap();
+                        io_state.set_pin(0, pin_24.is_high());
+                        io_state.set_pin(1, pin_25.is_high());
+                    }
+                    pin_selection_one.toggle();
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+
+                    get_adc0_value().await;
+                    get_adc1_value().await;
+                    get_adc2_value().await;
+                    get_adc3_value().await;
+                    println!("");
+                    get_adc0_2_value().await;
+                    get_adc1_2_value().await;
+                    get_adc2_2_value().await;
+                    get_adc3_2_value().await;
+                    println!("");
                 }
-                pin_selection_one.toggle();
-                tokio::time::sleep(Duration::from_millis(250)).await;
-
-                get_adc0_value().await;
-                get_adc1_value().await;
-                get_adc2_value().await;
-                get_adc3_value().await;
-                println!("");
-                get_adc0_2_value().await;
-                get_adc1_2_value().await;
-                get_adc2_2_value().await;
-                get_adc3_2_value().await;
-                println!("");
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                // sleep for half a second
+                // toggle pin values
+                // sleep a bit 
+                // toggle
             }
-            tokio::time::sleep(Duration::from_millis(50)).await;
-            // sleep for half a second
-            // toggle pin values
-            // sleep a bit 
-            // toggle
-        }
 
-        
-    });
-
+            
+        });
+    }
 
     app(shared_state).await;
 
