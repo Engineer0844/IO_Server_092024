@@ -81,7 +81,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-    log::info!("blafdjaklfjakfl");
     let shared_state: Arc<Mutex<IoState>> = Arc::new(Mutex::new(IoState::new()));
     let background_state = shared_state.clone();
     #[cfg(target_arch = "arm")]

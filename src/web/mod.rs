@@ -27,8 +27,8 @@ pub async fn app(shared_state: Arc<Mutex<IoState>>) {
         .route("/index", get(index))
         .route("/ws", get(ws_handler))
         .route("/io", get(crate::get_io_status))
+        // no idea why nest service is required, seems like fallback service should be enough. 
         .nest_service("/", serve_dir.clone())
-        .fallback_service(serve_dir.clone())
         .fallback(fallback)
         .with_state(shared_state);
     // run our app with hyper, listening globally on port 3000
