@@ -70,7 +70,7 @@ async fn handle_socket(socket: WebSocket) {
 
 
         // socket.send(Message::Text(counter.to_string())).await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        tokio::time::sleep(Duration::from_millis(1000)).await;
         
         counter += 1;
     }
