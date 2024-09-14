@@ -29,7 +29,6 @@ pub async fn app(shared_state: Arc<Mutex<IoState>>) {
     let app = Router::new()
         .route("/index", get(index))
         .route("/ws", get(ws_handler))
-        .route("/io", get(crate::get_io_status))
         // no idea why nest service is required, seems like fallback service should be enough.
         .nest_service("/", serve_dir.clone())
         .fallback(fallback)
@@ -87,11 +86,13 @@ async fn handle_socket(socket: WebSocket, shared_state: Arc<Mutex<IoState>>) {
             rhino.send_text_update("adc2_channel1",  io_state.adc2_channel1.to_string()).await;
             rhino.send_text_update("adc2_channel2",  io_state.adc2_channel2.to_string()).await;
             rhino.send_text_update("adc2_channel3",  io_state.adc2_channel3.to_string()).await;
+            rhino.send_text_update("pin_one",  io_state.pin_one.to_string()).await;
+            rhino.send_text_update("pin_two",  io_state.pin_two.to_string()).await;
 
         println!("counter: {counter}");
 
         // socket.send(Message::Text(counter.to_string())).await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         counter += 1;
     }

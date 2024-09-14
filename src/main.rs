@@ -26,28 +26,6 @@ const MAIN_LOOP_DELAY: u64 = 1000;
 const I2C_DELAY_TIME: u64 = 10;
 const VOLTAGE_LIMIT: f32 = 6.5;
 
-// const IO_PAGE: &str = ;
-
-async fn get_io_status(State(state): State<Arc<Mutex<IoState>>>) -> Html<String> {
-    let io_state = state.lock().unwrap();
-
-    Html(format!(
-        r#"
-    <html>
-    <title>Io Page</title>
-    <body>
-    Pin 24: {} Pin 25: {}
-    <script>
-    setTimeout(function() {{
-        document.location.reload(true);
-    }}, 50);
-    </script>
-    </body>
-    "#,
-        io_state.pin_one, io_state.pin_two
-    ))
-}
-
 #[derive(Default, Clone, Copy)]
 struct IoState {
     // digital input pins.

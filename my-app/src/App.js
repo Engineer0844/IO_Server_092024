@@ -4,6 +4,9 @@ import useWebSocket from 'react-use-websocket';
 
 import logo from './logo.svg';
 import './App.css';
+import { Button } from 'react-bootstrap';
+
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const WS_URL = 'ws://' + window.location.host + '/ws';
 
@@ -69,6 +72,12 @@ function App() {
         <LabelDisplay label_name="adc2_channel1"/>
         <LabelDisplay label_name="adc2_channel2"/>
         <LabelDisplay label_name="adc2_channel3"/>
+
+        <LabelDisplay label_name="pin_one"/>
+        <LabelDisplay label_name="pin_two"/>
+
+
+        <Button variant="primary">Primary</Button>
       </div>
     </div>
   );
