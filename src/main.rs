@@ -48,22 +48,26 @@ async fn get_io_status(State(state): State<Arc<Mutex<IoState>>>) -> Html<String>
     ))
 }
 
+#[derive(Default)]
 struct IoState {
     // digital input pins.
     pin_one: bool,
     pin_two: bool,
     pin_three: bool,
+
+
+    pub adc1_channel0: f32,
+    pub adc1_channel1: f32,
+    pub adc1_channel2: f32,
+    pub adc1_channel3: f32,
+
+    pub adc2_channel0: f32,
+    pub adc2_channel1: f32,
+    pub adc2_channel2: f32,
+    pub adc2_channel3: f32,
 }
 
 impl IoState {
-    fn new() -> Self {
-        Self {
-            pin_one: false,
-            pin_two: false,
-            pin_three: false,
-        }
-    }
-
     fn set_pin(&mut self, pin: u8, value: bool) {
         if pin == 0 {
             self.pin_one = value;
@@ -83,7 +87,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-    let shared_state: Arc<Mutex<IoState>> = Arc::new(Mutex::new(IoState::new()));
+    let shared_state: Arc<Mutex<IoState>> = Arc::new(Mutex::new(IoState::default()));
     let background_state = shared_state.clone();
 
     // #[cfg(target_arch = "arm")]
@@ -124,24 +128,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
             loop {
                 {
+                    let adc1_channel0 = get_adc0_value().await.unwrap();
+                    let adc1_channel1 = get_adc1_value().await.unwrap();
+                    let adc1_channel2 = get_adc2_value().await.unwrap();
+                    let adc1_channel3 = get_adc3_value().await.unwrap();
+                    println!("");
+                    let adc2_channel0 = get_adc0_2_value().await.unwrap();
+                    let adc2_channel1 = get_adc1_2_value().await.unwrap();
+                    let adc2_channel2 = get_adc2_2_value().await.unwrap();
+                    let adc2_channel3 = get_adc3_2_value().await.unwrap();
+                    println!("");
                     {
                         let mut io_state = background_state.lock().unwrap();
+                        io_state.adc1_channel0 = adc1_channel0;
+                        io_state.adc1_channel1 = adc1_channel1;
+                        io_state.adc1_channel2 = adc1_channel2;
+                        io_state.adc1_channel3 = adc1_channel3;
+                        
+                        io_state.adc2_channel0 = adc2_channel0;
+                        io_state.adc2_channel1 = adc2_channel1;
+                        io_state.adc2_channel2 = adc2_channel2;
+                        io_state.adc2_channel3 = adc2_channel3;
+                        
+
                         io_state.set_pin(0, pin_24.is_high());
                         io_state.set_pin(1, pin_25.is_high());
                     }
                     pin_selection_one.toggle();
                     tokio::time::sleep(Duration::from_millis(50)).await;
 
-                    get_adc0_value().await;
-                    get_adc1_value().await;
-                    get_adc2_value().await;
-                    get_adc3_value().await;
-                    println!("");
-                    get_adc0_2_value().await;
-                    get_adc1_2_value().await;
-                    get_adc2_2_value().await;
-                    get_adc3_2_value().await;
-                    println!("");
+                  
                 }
                 tokio::time::sleep(Duration::from_millis(MAIN_LOOP_DELAY)).await;
             }
@@ -164,7 +180,7 @@ fn get_pin_number(x: String) -> u8 {
     num
 }
 
-async fn get_adc0_value() -> Result<(), Box<dyn Error>> {
+async fn get_adc0_value() -> Result<f32, Box<dyn Error>> {
     let mut adc0_reg = [0u8; 2];
 
     let mut i2c0 = I2c::new()?;
@@ -189,10 +205,10 @@ async fn get_adc0_value() -> Result<(), Box<dyn Error>> {
     }
     println!(" ADC_1 0 voltage = {:?} ", adc0voltage);
 
-    Ok(())
+    Ok(adc0voltage)
 }
 
-async fn get_adc1_value() -> Result<(), Box<dyn Error>> {
+async fn get_adc1_value() -> Result<f32, Box<dyn Error>> {
     let mut adc1_reg = [0u8; 2];
 
     let mut i2c1 = I2c::new()?;
@@ -217,10 +233,10 @@ async fn get_adc1_value() -> Result<(), Box<dyn Error>> {
     }
     println!(" ADC_1 1 voltage = {:?} ", adc1voltage);
 
-    Ok(())
+    Ok(adc1voltage)
 }
 
-async fn get_adc2_value() -> Result<(), Box<dyn Error>> {
+async fn get_adc2_value() -> Result<f32, Box<dyn Error>> {
     let mut adc2_reg = [0u8; 2];
 
     let mut i2c2 = I2c::new()?;
@@ -245,10 +261,10 @@ async fn get_adc2_value() -> Result<(), Box<dyn Error>> {
     }
     println!(" ADC_1 2 voltage = {:?} ", adc2voltage);
 
-    Ok(())
+    Ok(adc2voltage)
 }
 
-async fn get_adc3_value() -> Result<(), Box<dyn Error>> {
+async fn get_adc3_value() -> Result<f32, Box<dyn Error>> {
     let mut adc3_reg = [0u8; 2];
 
     let mut i2c3 = I2c::new()?;
@@ -273,10 +289,10 @@ async fn get_adc3_value() -> Result<(), Box<dyn Error>> {
     }
     println!(" ADC_1 3 voltage = {:?} ", adc3voltage);
 
-    Ok(())
+    Ok(adc3voltage)
 }
 
-async fn get_adc0_2_value() -> Result<(), Box<dyn Error>> // this is a second ADS1115 ADC slave chip
+async fn get_adc0_2_value() -> Result<f32, Box<dyn Error>> // this is a second ADS1115 ADC slave chip
 {
     let mut adc0_2_reg = [0u8; 2];
 
@@ -299,10 +315,10 @@ async fn get_adc0_2_value() -> Result<(), Box<dyn Error>> // this is a second AD
     let adc0_2_voltage: f32 = adc0_2_voltage * 0.000125;
     println!(" ADC_2 0 voltage = {:?} ", adc0_2_voltage);
 
-    Ok(())
+    Ok(adc0_2_voltage)
 }
 
-async fn get_adc1_2_value() -> Result<(), Box<dyn Error>> // this is a second ADS1115 ADC slave chip
+async fn get_adc1_2_value() -> Result<f32, Box<dyn Error>> // this is a second ADS1115 ADC slave chip
 {
     let mut adc1_2_reg = [0u8; 2];
 
@@ -325,10 +341,10 @@ async fn get_adc1_2_value() -> Result<(), Box<dyn Error>> // this is a second AD
     let adc1_2_voltage: f32 = adc1_2_voltage * 0.000125;
     println!(" ADC_2 1 voltage = {:?} ", adc1_2_voltage);
 
-    Ok(())
+    Ok(adc1_2_voltage)
 }
 
-async fn get_adc2_2_value() -> Result<(), Box<dyn Error>> // this is a second ADS1115 ADC slave chip
+async fn get_adc2_2_value() -> Result<f32, Box<dyn Error>> // this is a second ADS1115 ADC slave chip
 {
     let mut adc2_2_reg = [0u8; 2];
 
@@ -351,10 +367,10 @@ async fn get_adc2_2_value() -> Result<(), Box<dyn Error>> // this is a second AD
     let adc2_2_voltage: f32 = adc2_2_voltage * 0.000125;
     println!(" ADC_2 2 voltage = {:?} ", adc2_2_voltage);
 
-    Ok(())
+    Ok(adc2_2_voltage)
 }
 
-async fn get_adc3_2_value() -> Result<(), Box<dyn Error>> // this is a second ADS1115 ADC slave chip
+async fn get_adc3_2_value() -> Result<f32, Box<dyn Error>> // this is a second ADS1115 ADC slave chip
 {
     let mut adc3_2_reg = [0u8; 2];
 
@@ -377,5 +393,5 @@ async fn get_adc3_2_value() -> Result<(), Box<dyn Error>> // this is a second AD
     let adc3_2_voltage: f32 = adc3_2_voltage * 0.000125;
     println!(" ADC_2 3 voltage = {:?} ", adc3_2_voltage);
 
-    Ok(())
+    Ok(adc3_2_voltage)
 }
