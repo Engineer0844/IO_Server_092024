@@ -75,16 +75,20 @@ async fn handle_socket(socket: WebSocket, shared_state: Arc<Mutex<IoState>>) {
     let mut counter = 0;
 
     loop {
-        println!("counter: {counter}");
+          
+            let io_state = {
+                shared_state.lock().unwrap().clone()
+            };
+            rhino.send_text_update("adc1_channel0",  io_state.adc1_channel0.to_string()).await;
+            rhino.send_text_update("adc1_channel1",  io_state.adc1_channel1.to_string()).await;
+            rhino.send_text_update("adc1_channel2",  io_state.adc1_channel2.to_string()).await;
+            rhino.send_text_update("adc1_channel3",  io_state.adc1_channel3.to_string()).await;
+            rhino.send_text_update("adc2_channel0",  io_state.adc2_channel0.to_string()).await;
+            rhino.send_text_update("adc2_channel1",  io_state.adc2_channel1.to_string()).await;
+            rhino.send_text_update("adc2_channel2",  io_state.adc2_channel2.to_string()).await;
+            rhino.send_text_update("adc2_channel3",  io_state.adc2_channel3.to_string()).await;
 
-        rhino.send_text_update("counter", counter.to_string()).await;
-        rhino.send_text_update("adc-1", counter.to_string()).await;
-        rhino
-            .send_text_update("adc-2", (counter * 2).to_string())
-            .await;
-        rhino
-            .send_text_update("adc-3", (counter * 3).to_string())
-            .await;
+        println!("counter: {counter}");
 
         // socket.send(Message::Text(counter.to_string())).await;
         tokio::time::sleep(Duration::from_millis(1000)).await;

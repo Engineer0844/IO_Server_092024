@@ -61,9 +61,14 @@ function App() {
         </a>
       </header>
       <div>
-        <LabelDisplay label_name="adc-1"/>
-        <LabelDisplay label_name="adc-2"/>
-        <LabelDisplay label_name="adc-3"/>
+        <LabelDisplay label_name="adc1_channel0"/>
+        <LabelDisplay label_name="adc1_channel1"/>
+        <LabelDisplay label_name="adc1_channel2"/>
+        <LabelDisplay label_name="adc1_channel3"/>
+        <LabelDisplay label_name="adc2_channel0"/>
+        <LabelDisplay label_name="adc2_channel1"/>
+        <LabelDisplay label_name="adc2_channel2"/>
+        <LabelDisplay label_name="adc2_channel3"/>
       </div>
     </div>
   );

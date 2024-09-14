@@ -48,7 +48,7 @@ async fn get_io_status(State(state): State<Arc<Mutex<IoState>>>) -> Html<String>
     ))
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 struct IoState {
     // digital input pins.
     pin_one: bool,
@@ -127,7 +127,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // set the user selected outputs
             let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
             loop {
-                {
+                
                     let adc1_channel0 = get_adc0_value().await.unwrap();
                     let adc1_channel1 = get_adc1_value().await.unwrap();
                     let adc1_channel2 = get_adc2_value().await.unwrap();
@@ -155,10 +155,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         io_state.set_pin(1, pin_25.is_high());
                     }
                     pin_selection_one.toggle();
-                    tokio::time::sleep(Duration::from_millis(50)).await;
-
-                  
-                }
                 tokio::time::sleep(Duration::from_millis(MAIN_LOOP_DELAY)).await;
             }
 
