@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let shared_state: Arc<Mutex<IoState>> = Arc::new(Mutex::new(IoState::new()));
     let background_state = shared_state.clone();
     
-    #[cfg(target_arch = "arm")]
+    // #[cfg(target_arch = "arm")]
     {
         let mut pin_pic_one = String::new();
         println!("Pick the first Raspberry PI output pin number"); //PIN 20 is connected for pin pick
@@ -144,8 +144,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     get_adc3_2_value().await;
                     println!("");
                 }
+                tokio::time::sleep(Duration::from_millis(MAIN_LOOP_DELAY)).await;
             }
-            tokio::time::sleep(Duration::from_millis(MAIN_LOOP_DELAY)).await;
+            
             // sleep for half a second
             // toggle pin values
             // sleep a bit 
