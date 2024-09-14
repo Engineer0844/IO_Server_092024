@@ -11,7 +11,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 const WS_URL = 'ws://' + window.location.host + '/ws';
 
 
-function IoStateRow({ label_name }) {
+function TextUpdateRow({ label_name }) {
 
   const [value, setValue] = useState(10);
   const { sendMessage, lastMessage, readyState } = useWebSocket(WS_URL, {
@@ -53,7 +53,7 @@ function IoStateTable() {
     "pin_two"
   ];
 
-  const body = pin_names.map((x) => <IoStateRow label_name={x}/>);
+  const body = pin_names.map((x) => <TextUpdateRow label_name={x}/>);
   return (<Table striped bordered hover>
       <thead>
         <tr>
@@ -105,6 +105,9 @@ function App() {
 
   return (
     <div className="App">
+      <div>
+        <p> Marques' cool raspberry pi I/O website</p>
+      </div>
       <div>
         <IoStateTable />
       </div>
