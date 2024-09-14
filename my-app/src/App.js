@@ -8,8 +8,8 @@ import './App.css';
 const WS_URL = 'ws://' + window.location.host + '/ws';
 
 
-
-function LabelDisplay() {
+// this is text update label
+function LabelDisplay({ label_name }) {
   
   const [value, setValue] = useState(10);
   const { sendMessage, lastMessage, readyState } = useWebSocket(WS_URL, {
@@ -22,7 +22,7 @@ function LabelDisplay() {
   useEffect(() => {
     if (lastMessage !== null) {
       const json_payload = JSON.parse(lastMessage.data);
-      if(json_payload["id"] == "adc-1") {
+      if(json_payload["id"] == label_name) {
         setValue(json_payload["text"]);
       }
     }
@@ -30,7 +30,7 @@ function LabelDisplay() {
 
   return (
     <div className="label">
-      <p>Label: </p> <p>{value}</p>
+      <p>{label_name}: </p> <p>{value}</p>
     </div>
   );
 }
@@ -61,7 +61,9 @@ function App() {
         </a>
       </header>
       <div>
-        <LabelDisplay />
+        <LabelDisplay label_name="adc-1"/>
+        <LabelDisplay label_name="adc-2"/>
+        <LabelDisplay label_name="adc-3"/>
       </div>
     </div>
   );
