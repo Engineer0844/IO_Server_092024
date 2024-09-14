@@ -2,7 +2,10 @@
 /// Website related functionality goes here.
 // pulled from https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/main.rs
 use axum::{
-    extract::ws::{WebSocket, WebSocketUpgrade},
+    extract::{
+        ws::{WebSocket, WebSocketUpgrade},
+        State,
+    },
     http::{StatusCode, Uri},
     response::{Html, IntoResponse},
     routing::get,
@@ -27,7 +30,7 @@ pub async fn app(shared_state: Arc<Mutex<IoState>>) {
         .route("/index", get(index))
         .route("/ws", get(ws_handler))
         .route("/io", get(crate::get_io_status))
-        // no idea why nest service is required, seems like fallback service should be enough. 
+        // no idea why nest service is required, seems like fallback service should be enough.
         .nest_service("/", serve_dir.clone())
         .fallback(fallback)
         .with_state(shared_state);
@@ -52,15 +55,18 @@ async fn index() -> (StatusCode, Html<String>) {
 /// websocket protocol will occur.
 /// This is the last point where we can extract TCP/IP metadata such as IP address of the client
 /// as well as things from HTTP headers such as user-agent of the browser etc.
-async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(shared_state): State<Arc<Mutex<IoState>>>,
+) -> impl IntoResponse {
     println!("Ws handler got called");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
-    ws.on_upgrade(move |socket| handle_socket(socket))
+    ws.on_upgrade(move |socket| handle_socket(socket, shared_state))
 }
 
 /// Actual websocket statemachine (one will be spawned per connection)
-async fn handle_socket(socket: WebSocket) {
+async fn handle_socket(socket: WebSocket, shared_state: Arc<Mutex<IoState>>) {
     // returning from the handler closes the websocket connection
     println!("Websocket context marques destroyed");
 
@@ -82,7 +88,7 @@ async fn handle_socket(socket: WebSocket) {
 
         // socket.send(Message::Text(counter.to_string())).await;
         tokio::time::sleep(Duration::from_millis(1000)).await;
-        
+
         counter += 1;
     }
 }
