@@ -22,7 +22,7 @@ const ADDR_ADS115_TWO: u16 = 0x49; // Address of second ADS115 chip
 const REG_CONFIGURATION: u8 = 0x01;
 const REG_CONVERSION: u8 = 0x00;
 const DELAY_TIME: u64 = 100;
-const MAIN_LOOP_DELAY: u64 = 1000;
+const MAIN_LOOP_DELAY: u64 = 4000;
 const I2C_DELAY_TIME: u64 = 10;
 const VOLTAGE_LIMIT: f32 = 6.5;
 
@@ -106,16 +106,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
             loop {
                 
-                    let adc1_channel0 = get_adc0_value().await.unwrap();
-                    let adc1_channel1 = get_adc1_value().await.unwrap();
-                    let adc1_channel2 = get_adc2_value().await.unwrap();
-                    let adc1_channel3 = get_adc3_value().await.unwrap();
+                    let adc1_channel0 = get_adc_value(ADDR_ADS115, 0x42, 0x82, "ADC1_CH1_Voltage").await.unwrap();
+                    let adc1_channel1 = get_adc_value(ADDR_ADS115, 0x52, 0x82, "ADC1_CH2_Voltage").await.unwrap();
+                    let adc1_channel2 = get_adc_value(ADDR_ADS115, 0x62, 0x82, "ADC1_CH3_Voltage").await.unwrap();
+                    let adc1_channel3 = get_adc_value(ADDR_ADS115, 0x72, 0x82, "ADC1_CH4_Voltage").await.unwrap();
                     println!("");
-                    let adc2_channel0 = get_adc0_2_value().await.unwrap();
-                    let adc2_channel1 = get_adc1_2_value().await.unwrap();
-                    let adc2_channel2 = get_adc2_2_value().await.unwrap();
-                    let adc2_channel3 = get_adc3_2_value().await.unwrap();
                     println!("");
+                    println!("");
+                    let adc2_channel0 = get_adc_value(ADDR_ADS115_TWO, 0x42, 0x82, "ADC2_CH1_Voltage").await.unwrap();
+                    let adc2_channel1 = get_adc_value(ADDR_ADS115_TWO, 0x52, 0x82, "ADC2_CH2_Voltage").await.unwrap();
+                    let adc2_channel2 = get_adc_value(ADDR_ADS115_TWO, 0x62, 0x82, "ADC2_CH3_Voltage").await.unwrap();
+                    let adc2_channel3 = get_adc_value(ADDR_ADS115_TWO, 0x72, 0x82, "ADC2_CH4_Voltage").await.unwrap();
+                    println!("");
+
                     {
                         let mut io_state = background_state.lock().unwrap();
                         io_state.adc1_channel0 = adc1_channel0;
@@ -147,12 +150,44 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+// chip address u16; config reg1 u8, congfig reg2 u8; 
+
 fn get_pin_number(x: String) -> u8 {
     let num = x.trim().parse::<u8>().unwrap();
     println!("num equals: {num}");
 
     num
 }
+
+
+async fn get_adc_value(adc_address: u16, config_reg1: u8, config_reg2: u8, print_text: &str) -> Result<f32, Box<dyn Error>> {
+    let mut adc_reg = [0u8; 2];
+
+    let mut i2c0 = I2c::new()?;
+    i2c0.set_slave_address(adc_address)?;
+
+    i2c0.block_write(REG_CONFIGURATION, &[config_reg1, config_reg2])?; // Set configuration setting to ADS115
+    tokio::time::sleep(Duration::from_millis(I2C_DELAY_TIME)).await;
+
+    i2c0.block_write(REG_CONVERSION, &[0x00])?; // Set ADS115 config to look at the conversion registers
+    tokio::time::sleep(Duration::from_millis(I2C_DELAY_TIME)).await;
+
+    i2c0.block_read(REG_CONVERSION, &mut adc_reg)?; // reads ADS115 conversion register and puts contents into reg buffer
+    tokio::time::sleep(Duration::from_millis(I2C_DELAY_TIME)).await;
+
+    let adc_val: u16 = u16::from_be_bytes(adc_reg);
+    //println!(" ADC 0 decimal value = {:?} ", adc0val);
+    let adcvoltage: f32 = adc_val.into();
+
+    let mut adcvoltage: f32 = adcvoltage * 0.000125;
+    if adcvoltage > VOLTAGE_LIMIT {
+        adcvoltage = 0.01;
+    }
+    println!("{} = {:?}", print_text, adcvoltage);
+
+    Ok(adcvoltage)
+}
+
 
 async fn get_adc0_value() -> Result<f32, Box<dyn Error>> {
     let mut adc0_reg = [0u8; 2];
@@ -286,7 +321,10 @@ async fn get_adc0_2_value() -> Result<f32, Box<dyn Error>> // this is a second A
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
     let adc0_2_voltage: f32 = adc0_2_val.into();
 
-    let adc0_2_voltage: f32 = adc0_2_voltage * 0.000125;
+    let mut adc0_2_voltage: f32 = adc0_2_voltage * 0.000125;
+    if adc0_2_voltage > VOLTAGE_LIMIT {
+        adc0_2_voltage = 0.01;
+    }
     println!(" ADC_2 0 voltage = {:?} ", adc0_2_voltage);
 
     Ok(adc0_2_voltage)
@@ -308,13 +346,15 @@ async fn get_adc1_2_value() -> Result<f32, Box<dyn Error>> // this is a second A
     i2c0.block_read(REG_CONVERSION, &mut adc1_2_reg)?; // reads ADS115 conversion register and puts contents into reg buffer
     tokio::time::sleep(Duration::from_millis(I2C_DELAY_TIME)).await;
 
-    let adc1_2_val: u16 = u16::from_be_bytes(adc1_2_reg);
+    let mut adc1_2_val: u16 = u16::from_be_bytes(adc1_2_reg);
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
     let adc1_2_voltage: f32 = adc1_2_val.into();
 
-    let adc1_2_voltage: f32 = adc1_2_voltage * 0.000125;
-    println!(" ADC_2 1 voltage = {:?} ", adc1_2_voltage);
-
+    let mut adc1_2_voltage: f32 = adc1_2_voltage * 0.000125;
+    if adc1_2_voltage > VOLTAGE_LIMIT {
+        adc1_2_voltage = 0.01;
+    }
+    println!(" ADC_2 0 voltage = {:?} ", adc1_2_voltage);
     Ok(adc1_2_voltage)
 }
 
@@ -338,7 +378,10 @@ async fn get_adc2_2_value() -> Result<f32, Box<dyn Error>> // this is a second A
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
     let adc2_2_voltage: f32 = adc2_2_val.into();
 
-    let adc2_2_voltage: f32 = adc2_2_voltage * 0.000125;
+    let mut adc2_2_voltage: f32 = adc2_2_voltage * 0.000125;
+    if adc2_2_voltage > VOLTAGE_LIMIT {
+        adc2_2_voltage = 0.01;
+    }
     println!(" ADC_2 2 voltage = {:?} ", adc2_2_voltage);
 
     Ok(adc2_2_voltage)
@@ -364,7 +407,10 @@ async fn get_adc3_2_value() -> Result<f32, Box<dyn Error>> // this is a second A
     //println!(" ADC 0 decimal value = {:?} ", adc0val);
     let adc3_2_voltage: f32 = adc3_2_val.into();
 
-    let adc3_2_voltage: f32 = adc3_2_voltage * 0.000125;
+    let mut adc3_2_voltage: f32 = adc3_2_voltage * 0.000125;
+    if adc3_2_voltage > VOLTAGE_LIMIT {
+        adc3_2_voltage = 0.01;
+    }
     println!(" ADC_2 3 voltage = {:?} ", adc3_2_voltage);
 
     Ok(adc3_2_voltage)

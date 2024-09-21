@@ -71,7 +71,7 @@ async fn handle_socket(socket: WebSocket, shared_state: Arc<Mutex<IoState>>) {
 
     let mut rhino = Rhino::new(socket);
 
-    let mut counter = 0;
+    //let mut counter = 0;
 
     loop {
           
@@ -89,11 +89,11 @@ async fn handle_socket(socket: WebSocket, shared_state: Arc<Mutex<IoState>>) {
             rhino.send_text_update("pin_one",  io_state.pin_one.to_string()).await;
             rhino.send_text_update("pin_two",  io_state.pin_two.to_string()).await;
 
-        println!("counter: {counter}");
+        //println!("counter: {counter}");
 
         // socket.send(Message::Text(counter.to_string())).await;
         tokio::time::sleep(Duration::from_millis(100)).await;
 
-        counter += 1;
+        //counter += 1;
     }
 }
