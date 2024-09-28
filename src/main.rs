@@ -9,6 +9,8 @@ use std::error::Error;
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
 
 mod rhino;
 mod web;
@@ -22,9 +24,13 @@ const ADDR_ADS115_TWO: u16 = 0x49; // Address of second ADS115 chip
 const REG_CONFIGURATION: u8 = 0x01;
 const REG_CONVERSION: u8 = 0x00;
 const DELAY_TIME: u64 = 100;
-const MAIN_LOOP_DELAY: u64 = 4000;
+const MAIN_LOOP_DELAY: u64 = 100;
 const I2C_DELAY_TIME: u64 = 10;
 const VOLTAGE_LIMIT: f32 = 6.5;
+
+//Output setup
+
+const OUTPUT20: u8 = 20;
 
 #[derive(Default, Clone, Copy)]
 struct IoState {
@@ -102,21 +108,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // set input pins
             let pin_25 = Gpio::new().unwrap().get(25).unwrap().into_input_pulldown();
             let pin_24 = Gpio::new().unwrap().get(24).unwrap().into_input_pulldown();
+
             // set the user selected outputs
             let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
+            let mut output_20 = Gpio::new().unwrap().get(OUTPUT20).unwrap().into_output();
+
             loop {
                 
-                    let adc1_channel0 = get_adc_value(ADDR_ADS115, 0x42, 0x82, "ADC1_CH1_Voltage").await.unwrap();
-                    let adc1_channel1 = get_adc_value(ADDR_ADS115, 0x52, 0x82, "ADC1_CH2_Voltage").await.unwrap();
-                    let adc1_channel2 = get_adc_value(ADDR_ADS115, 0x62, 0x82, "ADC1_CH3_Voltage").await.unwrap();
-                    let adc1_channel3 = get_adc_value(ADDR_ADS115, 0x72, 0x82, "ADC1_CH4_Voltage").await.unwrap();
+                    let adc1_channel0 = get_adc_value(ADDR_ADS115, 0x42, 0x82, "ADC1_CH0_Voltage").await.unwrap();
+                    let adc1_channel1 = get_adc_value(ADDR_ADS115, 0x52, 0x82, "ADC1_CH1_Voltage").await.unwrap();
+                    let adc1_channel2 = get_adc_value(ADDR_ADS115, 0x62, 0x82, "ADC1_CH2_Voltage").await.unwrap();
+                    let adc1_channel3 = get_adc_value(ADDR_ADS115, 0x72, 0x82, "ADC1_CH3_Voltage").await.unwrap();
                     println!("");
                     println!("");
-                    println!("");
-                    let adc2_channel0 = get_adc_value(ADDR_ADS115_TWO, 0x42, 0x82, "ADC2_CH1_Voltage").await.unwrap();
-                    let adc2_channel1 = get_adc_value(ADDR_ADS115_TWO, 0x52, 0x82, "ADC2_CH2_Voltage").await.unwrap();
-                    let adc2_channel2 = get_adc_value(ADDR_ADS115_TWO, 0x62, 0x82, "ADC2_CH3_Voltage").await.unwrap();
-                    let adc2_channel3 = get_adc_value(ADDR_ADS115_TWO, 0x72, 0x82, "ADC2_CH4_Voltage").await.unwrap();
+                    let adc2_channel0 = get_adc_value(ADDR_ADS115_TWO, 0x42, 0x82, "ADC2_CH0_Voltage").await.unwrap();
+                    let adc2_channel1 = get_adc_value(ADDR_ADS115_TWO, 0x52, 0x82, "ADC2_CH1_Voltage").await.unwrap();
+                    let adc2_channel2 = get_adc_value(ADDR_ADS115_TWO, 0x62, 0x82, "ADC2_CH2_Voltage").await.unwrap();
+                    let adc2_channel3 = get_adc_value(ADDR_ADS115_TWO, 0x72, 0x82, "ADC2_CH3_Voltage").await.unwrap();
                     println!("");
 
                     {
@@ -136,6 +144,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         io_state.set_pin(1, pin_25.is_high());
                     }
                     pin_selection_one.toggle();
+                    
+                    output_20.set_high();
                 tokio::time::sleep(Duration::from_millis(MAIN_LOOP_DELAY)).await;
             }
 
@@ -183,7 +193,9 @@ async fn get_adc_value(adc_address: u16, config_reg1: u8, config_reg2: u8, print
     if adcvoltage > VOLTAGE_LIMIT {
         adcvoltage = 0.01;
     }
-    println!("{} = {:?}", print_text, adcvoltage);
+    println!("{} = {:.2?}", print_text, adcvoltage);
+
+    //let adcvoltage = Decimal::new(adcvoltage, 2);
 
     Ok(adcvoltage)
 }

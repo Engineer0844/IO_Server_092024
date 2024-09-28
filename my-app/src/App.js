@@ -106,7 +106,8 @@ function App() {
   return (
     <div className="App">
       <div>
-        <p> Marques' cool raspberry pi I/O website</p>
+        <h1> Marques' cool raspberry pi I/O website</h1>
+        <p color> ADC Read Information Below</p>
       </div>
       <div>
         <IoStateTable />
