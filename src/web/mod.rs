@@ -78,16 +78,16 @@ async fn handle_socket(socket: WebSocket, shared_state: Arc<Mutex<IoState>>) {
             let io_state = {
                 shared_state.lock().unwrap().clone()
             };
-            rhino.send_text_update("adc1_channel0",  io_state.adc1_channel0.to_string()).await;
-            rhino.send_text_update("adc1_channel1",  io_state.adc1_channel1.to_string()).await;
-            rhino.send_text_update("adc1_channel2",  io_state.adc1_channel2.to_string()).await;
-            rhino.send_text_update("adc1_channel3",  io_state.adc1_channel3.to_string()).await;
-            rhino.send_text_update("adc2_channel0",  io_state.adc2_channel0.to_string()).await;
-            rhino.send_text_update("adc2_channel1",  io_state.adc2_channel1.to_string()).await;
-            rhino.send_text_update("adc2_channel2",  io_state.adc2_channel2.to_string()).await;
-            rhino.send_text_update("adc2_channel3",  io_state.adc2_channel3.to_string()).await;
-            rhino.send_text_update("pin_one",  io_state.pin_one.to_string()).await;
-            rhino.send_text_update("pin_two",  io_state.pin_two.to_string()).await;
+            rhino.send_text_update("adc1_channel0",  format!("{:.2}", io_state.adc1_channel0)).await;
+            rhino.send_text_update("adc1_channel1",  format!("{:.2}", io_state.adc1_channel1)).await;
+            rhino.send_text_update("adc1_channel2",  format!("{:.2}", io_state.adc1_channel2)).await;
+            rhino.send_text_update("adc1_channel3",  format!("{:.2}", io_state.adc1_channel3)).await;
+            rhino.send_text_update("adc2_channel0",  format!("{:.2}", io_state.adc2_channel0)).await;
+            rhino.send_text_update("adc2_channel1",  format!("{:.2}", io_state.adc2_channel1)).await;
+            rhino.send_text_update("adc2_channel2",  format!("{:.2}", io_state.adc2_channel2)).await;
+            rhino.send_text_update("adc2_channel3",  format!("{:.2}", io_state.adc2_channel3)).await;
+            rhino.send_text_update("pin_one",        format!("{}", io_state.pin_one)).await;
+            rhino.send_text_update("pin_two",        format!("{}", io_state.pin_two)).await;
 
         //println!("counter: {counter}");
 
