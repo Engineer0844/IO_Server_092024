@@ -1,16 +1,17 @@
 // Server that displays IO Status
 use axum::{extract::State, response::Html};
 
+use tokio::sync::mpsc::Sender;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use rppal::gpio::Gpio;
 use rppal::i2c::I2c;
+use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
 use std::error::Error;
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use rust_decimal::prelude::*;
-use rust_decimal_macros::dec;
 
 mod rhino;
 mod web;
@@ -32,13 +33,12 @@ const VOLTAGE_LIMIT: f32 = 6.5;
 
 const OUTPUT20: u8 = 20;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone)]
 struct IoState {
     // digital input pins.
     pin_one: bool,
     pin_two: bool,
     pin_three: bool,
-
 
     pub adc1_channel0: f32,
     pub adc1_channel1: f32,
@@ -49,9 +49,30 @@ struct IoState {
     pub adc2_channel1: f32,
     pub adc2_channel2: f32,
     pub adc2_channel3: f32,
+
+    sneaky_sender: Sender<String>,
 }
 
 impl IoState {
+    fn new(tx: Sender<String>) -> Self {
+        Self {
+            pin_one: false,
+            pin_two: false,
+            pin_three: false,
+
+            adc1_channel0: 0.0,
+            adc1_channel1: 0.0,
+            adc1_channel2: 0.0,
+            adc1_channel3: 0.0,
+            adc2_channel0: 0.0,
+            adc2_channel1: 0.0,
+            adc2_channel2: 0.0,
+            adc2_channel3: 0.0,
+            
+            sneaky_sender: tx,
+        }
+    }
+
     fn set_pin(&mut self, pin: u8, value: bool) {
         if pin == 0 {
             self.pin_one = value;
@@ -60,6 +81,7 @@ impl IoState {
         }
     }
 }
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -71,7 +93,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-    let shared_state: Arc<Mutex<IoState>> = Arc::new(Mutex::new(IoState::default()));
+    
+    let (tx, mut rx) = tokio::sync::mpsc::channel(32);
+
+    let io_state = IoState::new(tx);
+
+    let shared_state: Arc<Mutex<IoState>> = Arc::new(Mutex::new(io_state));
+   
     let background_state = shared_state.clone();
 
     // #[cfg(target_arch = "arm")]
@@ -112,40 +140,59 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // set the user selected outputs
             let mut pin_selection_one = Gpio::new().unwrap().get(pick_one).unwrap().into_output();
             let mut output_20 = Gpio::new().unwrap().get(OUTPUT20).unwrap().into_output();
-
+            output_20.set_low();
             loop {
-                
-                    let adc1_channel0 = get_adc_value(ADDR_ADS115, 0x42, 0x82, "ADC1_CH0_Voltage").await.unwrap();
-                    let adc1_channel1 = get_adc_value(ADDR_ADS115, 0x52, 0x82, "ADC1_CH1_Voltage").await.unwrap();
-                    let adc1_channel2 = get_adc_value(ADDR_ADS115, 0x62, 0x82, "ADC1_CH2_Voltage").await.unwrap();
-                    let adc1_channel3 = get_adc_value(ADDR_ADS115, 0x72, 0x82, "ADC1_CH3_Voltage").await.unwrap();
-                    println!("");
-                    println!("");
-                    let adc2_channel0 = get_adc_value(ADDR_ADS115_TWO, 0x42, 0x82, "ADC2_CH0_Voltage").await.unwrap();
-                    let adc2_channel1 = get_adc_value(ADDR_ADS115_TWO, 0x52, 0x82, "ADC2_CH1_Voltage").await.unwrap();
-                    let adc2_channel2 = get_adc_value(ADDR_ADS115_TWO, 0x62, 0x82, "ADC2_CH2_Voltage").await.unwrap();
-                    let adc2_channel3 = get_adc_value(ADDR_ADS115_TWO, 0x72, 0x82, "ADC2_CH3_Voltage").await.unwrap();
-                    println!("");
+                let adc1_channel0 = get_adc_value(ADDR_ADS115, 0x42, 0x82, "ADC1_CH0_Voltage")
+                    .await
+                    .unwrap();
+                let adc1_channel1 = get_adc_value(ADDR_ADS115, 0x52, 0x82, "ADC1_CH1_Voltage")
+                    .await
+                    .unwrap();
+                let adc1_channel2 = get_adc_value(ADDR_ADS115, 0x62, 0x82, "ADC1_CH2_Voltage")
+                    .await
+                    .unwrap();
+                let adc1_channel3 = get_adc_value(ADDR_ADS115, 0x72, 0x82, "ADC1_CH3_Voltage")
+                    .await
+                    .unwrap();
+                println!("");
+                println!("");
+                let adc2_channel0 = get_adc_value(ADDR_ADS115_TWO, 0x42, 0x82, "ADC2_CH0_Voltage")
+                    .await
+                    .unwrap();
+                let adc2_channel1 = get_adc_value(ADDR_ADS115_TWO, 0x52, 0x82, "ADC2_CH1_Voltage")
+                    .await
+                    .unwrap();
+                let adc2_channel2 = get_adc_value(ADDR_ADS115_TWO, 0x62, 0x82, "ADC2_CH2_Voltage")
+                    .await
+                    .unwrap();
+                let adc2_channel3 = get_adc_value(ADDR_ADS115_TWO, 0x72, 0x82, "ADC2_CH3_Voltage")
+                    .await
+                    .unwrap();
+                println!("");
 
-                    {
-                        let mut io_state = background_state.lock().unwrap();
-                        io_state.adc1_channel0 = adc1_channel0;
-                        io_state.adc1_channel1 = adc1_channel1;
-                        io_state.adc1_channel2 = adc1_channel2;
-                        io_state.adc1_channel3 = adc1_channel3;
-                        
-                        io_state.adc2_channel0 = adc2_channel0;
-                        io_state.adc2_channel1 = adc2_channel1;
-                        io_state.adc2_channel2 = adc2_channel2;
-                        io_state.adc2_channel3 = adc2_channel3;
-                        
+                {
+                    let mut io_state = background_state.lock().unwrap();
+                    io_state.adc1_channel0 = adc1_channel0;
+                    io_state.adc1_channel1 = adc1_channel1;
+                    io_state.adc1_channel2 = adc1_channel2;
+                    io_state.adc1_channel3 = adc1_channel3;
 
-                        io_state.set_pin(0, pin_24.is_high());
-                        io_state.set_pin(1, pin_25.is_high());
+                    io_state.adc2_channel0 = adc2_channel0;
+                    io_state.adc2_channel1 = adc2_channel1;
+                    io_state.adc2_channel2 = adc2_channel2;
+                    io_state.adc2_channel3 = adc2_channel3;
+
+                    io_state.set_pin(0, pin_24.is_high());
+                    io_state.set_pin(1, pin_25.is_high());
+                }
+                pin_selection_one.toggle();
+                match rx.try_recv() {
+                    Ok(msg) => {
+                        println!("Got a message in main from rx: {}",msg);
+                        output_20.set_high();
                     }
-                    pin_selection_one.toggle();
-                    
-                    output_20.set_high();
+                    Err(_) => {} 
+                }
                 tokio::time::sleep(Duration::from_millis(MAIN_LOOP_DELAY)).await;
             }
 
@@ -160,7 +207,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-// chip address u16; config reg1 u8, congfig reg2 u8; 
+// chip address u16; config reg1 u8, congfig reg2 u8;
 
 fn get_pin_number(x: String) -> u8 {
     let num = x.trim().parse::<u8>().unwrap();
@@ -169,8 +216,12 @@ fn get_pin_number(x: String) -> u8 {
     num
 }
 
-
-async fn get_adc_value(adc_address: u16, config_reg1: u8, config_reg2: u8, print_text: &str) -> Result<f32, Box<dyn Error>> {
+async fn get_adc_value(
+    adc_address: u16,
+    config_reg1: u8,
+    config_reg2: u8,
+    print_text: &str,
+) -> Result<f32, Box<dyn Error>> {
     let mut adc_reg = [0u8; 2];
 
     let mut i2c0 = I2c::new()?;
@@ -199,7 +250,6 @@ async fn get_adc_value(adc_address: u16, config_reg1: u8, config_reg2: u8, print
 
     Ok(adcvoltage)
 }
-
 
 async fn get_adc0_value() -> Result<f32, Box<dyn Error>> {
     let mut adc0_reg = [0u8; 2];

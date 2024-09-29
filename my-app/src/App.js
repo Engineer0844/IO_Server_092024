@@ -10,6 +10,23 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 const WS_URL = 'ws://' + window.location.host + '/ws';
 
+function ButtonTest() {
+  const { sendJsonMessage, lastMessage, readyState } = useWebSocket(WS_URL, {
+    onOpen: () => {
+      console.log('WebSocket connection established.');
+    },
+    share: true
+  });
+
+  function onClick() {
+     console.log("on change from a button");
+     sendJsonMessage({"id": 10, "message": "a button got clicked"});
+  }
+
+  return (
+    <button type="reset" onClick={onClick}>output 20</button>
+  )
+}
 
 function TextUpdateRow({ label_name }) {
 
@@ -112,6 +129,8 @@ function App() {
       <div>
         <IoStateTable />
       </div>
+      <input name="MyInput" />
+      <ButtonTest />
     </div>
   );
 }
