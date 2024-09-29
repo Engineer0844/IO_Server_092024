@@ -8,6 +8,8 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 
+use crate::OutputCommand;
+
 pub struct TextDisplay {}
 
 /// Send from the server to the client.
@@ -17,6 +19,11 @@ pub struct TextUpdate {
     text: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LEDToggleUpdate {
+    id: String,
+    message: String,
+}
 pub enum ServerCommands {}
 
 pub enum ClientCommands {}
@@ -31,14 +38,18 @@ pub struct Rhino {
 struct RhinoMaintainer {}
 
 impl RhinoMaintainer {
-    async fn maintenance(mut receiver: SplitStream<WebSocket>, output_sender: Sender<String>) {
+    async fn maintenance(mut receiver: SplitStream<WebSocket>, output_sender: Sender<OutputCommand>) {
         // read commands from the client.
         loop {
             let msg = receiver.next().await;
             match msg {
-                Some(msg) => {
-                    println!("Got a message from a client: {:?}", msg);
-                    output_sender.send("value".into()).await;
+                Some(Ok(Message::Text(msg))) => {
+                    let led_toggle: LEDToggleUpdate = serde_json::from_str(&msg).unwrap();
+                    println!("Got a message from a client: {:?}", led_toggle);
+                    output_sender.send(OutputCommand::LedToggle(led_toggle.id.parse().unwrap())).await;
+                }
+                Some(_) => { 
+                    println!("Iunno got somethign weird");
                 }
                 None => {
                     println!("the stream was closed");
@@ -50,7 +61,7 @@ impl RhinoMaintainer {
 }
 
 impl Rhino {
-    pub fn new(socket: WebSocket, output_sender: Sender<String>) -> Self {
+    pub fn new(socket: WebSocket, output_sender: Sender<OutputCommand>) -> Self {
         let (sender, receiver) = socket.split();
 
         tokio::spawn(RhinoMaintainer::maintenance(receiver, output_sender));

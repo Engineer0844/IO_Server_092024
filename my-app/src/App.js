@@ -10,7 +10,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 const WS_URL = 'ws://' + window.location.host + '/ws';
 
-function ButtonTest() {
+function ButtonTest({buttonID}) {
   const { sendJsonMessage, lastMessage, readyState } = useWebSocket(WS_URL, {
     onOpen: () => {
       console.log('WebSocket connection established.');
@@ -20,11 +20,11 @@ function ButtonTest() {
 
   function onClick() {
      console.log("on change from a button");
-     sendJsonMessage({"id": 10, "message": "a button got clicked"});
+     sendJsonMessage({"id": buttonID, "message": "a button got clicked"});
   }
 
   return (
-    <button type="reset" onClick={onClick}>output 20</button>
+    <button type="reset" onClick={onClick}>{buttonID}</button>
   )
 }
 
@@ -69,6 +69,7 @@ function IoStateTable() {
     "pin_one",
     "pin_two"
   ];
+
 
   const body = pin_names.map((x) => <TextUpdateRow label_name={x}/>);
   return (<Table striped bordered hover>
@@ -130,7 +131,12 @@ function App() {
         <IoStateTable />
       </div>
       <input name="MyInput" />
+      <ButtonTest buttonID= "20" />
+      <ButtonTest buttonID= "23" />
+
+      {/* <ButtonTest pin="23"/>
       <ButtonTest />
+      <ButtonTest /> */}
     </div>
   );
 }

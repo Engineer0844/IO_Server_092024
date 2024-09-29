@@ -33,6 +33,10 @@ const VOLTAGE_LIMIT: f32 = 6.5;
 
 const OUTPUT20: u8 = 20;
 
+enum OutputCommand {
+    LedToggle(i32),
+}
+
 #[derive(Clone)]
 struct IoState {
     // digital input pins.
@@ -50,11 +54,11 @@ struct IoState {
     pub adc2_channel2: f32,
     pub adc2_channel3: f32,
 
-    sneaky_sender: Sender<String>,
+    sneaky_sender: Sender<OutputCommand>,
 }
 
 impl IoState {
-    fn new(tx: Sender<String>) -> Self {
+    fn new(tx: Sender<OutputCommand>) -> Self {
         Self {
             pin_one: false,
             pin_two: false,
@@ -187,9 +191,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
                 pin_selection_one.toggle();
                 match rx.try_recv() {
-                    Ok(msg) => {
-                        println!("Got a message in main from rx: {}",msg);
-                        output_20.set_high();
+                    Ok(OutputCommand::LedToggle(pin_id)) => {
+                        println!("Got a message in main from rx: {}", pin_id);
+                        if pin_id == 20 {
+                            if output_20.is_set_low() {
+                                output_20.set_high();
+                            } else 
+                            {
+                                output_20.set_low();
+                            }
+                            
+                        }
                     }
                     Err(_) => {} 
                 }
